@@ -66,29 +66,49 @@ def load_config(path="config.yml"):
         config_namespace = dict_to_namespace(config_dict)
         return config_namespace
 
-def commit_process(repo: RepoObject):
+def commit_process(repo: RepoObject, latest_commit_message):
     print("Pull")
     try:
         repo.repo.git.pull()
     except Exception as e:
         print(f"No remote branch to pull, skipping: {e}")
+
     print(f"Running script: {repo.script}")
-    repo_path = f"repos/{repo.name}" # repo 폴더
+    repo_path = f"repos/{repo.name}"  # repo 폴더
     script_path = repo.script
 
     if os.path.exists(repo_path):
         print(f"Running script in {repo_path}: {script_path}")
-        subprocess.run(script_path, shell=True, check=True, cwd=repo_path)
+        result = subprocess.run(
+            f"{script_path} \"{latest_commit_message}\"",
+            shell=True,
+            check=True,
+            cwd=repo_path,
+            capture_output=True,
+            text=True
+        )
+
+        commit_msg = repo.commit_message  # 기본 메시지
+        for line in result.stdout.splitlines():
+            if "GitBotCM:" in line:
+                commit_msg = line.split("GitBotCM:", 1)[1].strip()
+                break  # 첫 번째만 사용
     else:
         print(f"Repo path {repo_path} does not exist.")
-    
-    print("Commit")
-    repo.repo.git.add(all=True)
-    repo.repo.index.commit(repo.commit_message, author=author)
+        return  # repo가 없으면 종료
 
-    origin = repo.repo.remote(name=repo.remote_name)
-    branch_name = repo.repo.active_branch.name
-    origin.push(refspec=f"{branch_name}:{branch_name}")
+    # 변경 사항이 있는지 확인
+    if repo.repo.is_dirty(untracked_files=True):
+        print("Changes detected, committing...")
+        repo.repo.git.add(all=True)
+        repo.repo.index.commit(commit_msg, author=author)
+
+        origin = repo.repo.remote(name=repo.remote_name)
+        branch_name = repo.repo.active_branch.name
+        origin.push(refspec=f"{branch_name}:{branch_name}")
+        print(f"Committed and pushed: {commit_msg}")
+    else:
+        print("No changes detected. Skipping commit.")
 
 print("Load Config")
 config = load_config()
@@ -135,11 +155,11 @@ while True:
             latest_commit_message = latest_remote_commit.message
 
             if should_run(repo, conditions_list=conditions_list):
-                commit_process(repo)
+                commit_process(repo, latest_commit_message)
             elif commit_condition_passed(repo, conditions_list, latest_commit_message):
-                commit_process(repo)
+                commit_process(repo, latest_commit_message)
             elif interval_condition_passed(repo, conditions_list):
-                commit_process(repo)
+                commit_process(repo, latest_commit_message)
             else:
                 print("Passed")
             

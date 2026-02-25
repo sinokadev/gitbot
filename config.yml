@@ -20,4 +20,4 @@ repos:
     remote_name: "origin"
     script: "python /home/sinokadev/gitbot/scripts/addone.py"
     commit_message: "자동 생성된 커밋"
-    run: commit_check
+    run: testone
