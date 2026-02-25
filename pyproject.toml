@@ -1,7 +1,7 @@
 [project]
 name = "gitbot"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.2.0"
+description = "GitBot - Auto Commit Bot"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

@@ -10,6 +10,11 @@ This project is a Python-based automation bot that manages Git repositories, exe
 - Automatic commit and push of changes  
 - Management of multiple repositories simultaneously  
 
+## Install
+
+1. `pip install -r requirements.txt`
+2. End!
+
 ## Config (`config.yml`)
 
 Example:  
