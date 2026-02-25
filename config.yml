@@ -2,6 +2,17 @@ author:
   name: "GitBot"
   email: "gitbot@sinoka.dev"
 
+condition:
+  - name: testone
+    type: run
+    value: true
+  - name: every_minute
+    type: interval
+    value: 60
+  - name: commit_check
+    type: commit_message_contains
+    value: "자동 생성된 커밋"
+
 repos:
   - url: "https://github.com/sinokadev/gitbot-test.git"
     name: "test"
@@ -9,3 +20,4 @@ repos:
     remote_name: "origin"
     script: "python /home/sinokadev/gitbot/scripts/addone.py"
     commit_message: "자동 생성된 커밋"
+    run: commit_check

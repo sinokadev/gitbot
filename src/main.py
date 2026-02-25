@@ -3,14 +3,53 @@ from git import Repo, Actor, GitCommandError
 import types
 import os
 import subprocess
+import time
 
 class RepoObject:
-    def __init__(self, repo: Repo = None, commit_message: str = None, script: str = None, remote_name: str = None, name: str = None):
-        self.repo: Repo | None = repo
-        self.commit_message: str | None = commit_message
-        self.script: str | None = script
+    def __init__(self, repo=None, commit_message=None, script=None,
+                 remote_name=None, name=None, condition=None):
+        self.repo = repo
+        self.commit_message = commit_message
+        self.script = script
         self.remote_name = remote_name
         self.name = name
+        self.condition = condition
+        self.last_run = 0  # timestamp of last run
+
+def should_run(repo_obj: RepoObject, conditions_list):
+    if not repo_obj.condition:
+        return False
+
+    cond = next((c for c in conditions_list if c["name"] == repo_obj.condition), None)
+    if cond and cond["type"] == "run" and cond["value"] is True:
+        return True
+    return False
+
+def commit_condition_passed(repo_obj, conditions_list, latest_commit_message):
+    cond = next(
+        (c for c in conditions_list if c["name"] == repo_obj.condition),
+        None
+    )
+
+    if cond is None:
+        return False
+
+    if cond["type"] == "commit_message_contains":
+        # 최신 커밋 메시지에 value 문자열 포함 여부
+        return cond["value"] == latest_commit_message
+
+    return False
+
+def interval_condition_passed(repo_obj, conditions_list):
+    cond = next((c for c in conditions_list if c["name"] == repo_obj.condition), None)
+    if cond is None or cond["type"] != "interval":
+        return False
+
+    now = time.time()
+    if now - repo_obj.last_run >= cond["value"]:  # value는 초
+        repo_obj.last_run = now
+        return True
+    return False
 
 def dict_to_namespace(d):
     if isinstance(d, dict):
@@ -26,7 +65,31 @@ def load_config(path="config.yml"):
         config_dict = yaml.safe_load(config_yaml)
         config_namespace = dict_to_namespace(config_dict)
         return config_namespace
+
+def commit_process(repo: RepoObject):
+    print("Pull")
+    try:
+        repo.repo.git.pull()
+    except Exception as e:
+        print(f"No remote branch to pull, skipping: {e}")
+    print(f"Running script: {repo.script}")
+    repo_path = f"repos/{repo.name}" # repo 폴더
+    script_path = repo.script
+
+    if os.path.exists(repo_path):
+        print(f"Running script in {repo_path}: {script_path}")
+        subprocess.run(script_path, shell=True, check=True, cwd=repo_path)
+    else:
+        print(f"Repo path {repo_path} does not exist.")
     
+    print("Commit")
+    repo.repo.git.add(all=True)
+    repo.repo.index.commit(repo.commit_message, author=author)
+
+    origin = repo.repo.remote(name=repo.remote_name)
+    branch_name = repo.repo.active_branch.name
+    origin.push(refspec=f"{branch_name}:{branch_name}")
+
 print("Load Config")
 config = load_config()
 
@@ -52,37 +115,37 @@ for repo_cfg in config.repos:
         print(f"Branch {repo_cfg.branch} does not exist. Creating new branch.")
         git_repo.git.checkout("-b", repo_cfg.branch)
 
-    repo_obj = RepoObject(repo=git_repo, commit_message=repo_cfg.commit_message, script=repo_cfg.script, remote_name=repo_cfg.remote_name, name=repo_cfg.name)
+    repo_obj = RepoObject(repo=git_repo, commit_message=repo_cfg.commit_message, script=repo_cfg.script, remote_name=repo_cfg.remote_name, name=repo_cfg.name, condition=repo_cfg.run)
     repos.append(repo_obj)
 
 
 print("Bot is running!")
+conditions_list = [vars(c) for c in config.condition]
 while True:
     try:
         for repo in repos:
-            print("Pull")
-            try:
-                repo.repo.git.pull()
-            except Exception as e:
-                print(f"No remote branch to pull, skipping: {e}")
-            print(f"Running script: {repo.script}")
-            repo_path = f"repos/{repo.name}" # repo 폴더
-            script_path = repo.script
+            origin = repo.repo.remote(name=repo.remote_name) # 원격 가져오기
+            branch_name = repo.repo.active_branch.name # 현재 브랜치 이름
 
-            if os.path.exists(repo_path):
-                print(f"Running script in {repo_path}: {script_path}")
-                subprocess.run(script_path, shell=True, check=True, cwd=repo_path)
+            # 원격 최신 정보 가져오기 (fetch)
+            origin.fetch()
+            # 원격 브랜치 최신 커밋 가져오기
+            latest_remote_commit = list(repo.repo.iter_commits(f"origin/{branch_name}", max_count=1))[0]
+
+            latest_commit_message = latest_remote_commit.message
+
+            if should_run(repo, conditions_list=conditions_list):
+                commit_process(repo)
+            elif commit_condition_passed(repo, conditions_list, latest_commit_message):
+                commit_process(repo)
+            elif interval_condition_passed(repo, conditions_list):
+                commit_process(repo)
             else:
-                print(f"Repo path {repo_path} does not exist.")
+                print("Passed")
             
-            print("Commit")
-            repo.repo.git.add(all=True)
-            repo.repo.index.commit(repo.commit_message, author=author)
-
-            origin = repo.repo.remote(name=repo.remote_name)
-            branch_name = repo.repo.active_branch.name
-            origin.push(refspec=f"{branch_name}:{branch_name}")
-
+            print("End")
+            
+        time.sleep(1)
     except KeyboardInterrupt:
         break
     except Exception as e:
