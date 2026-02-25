@@ -1,0 +1,11 @@
+author:
+  name: "GitBot"
+  email: "gitbot@sinoka.dev"
+
+repos:
+  - url: "https://github.com/sinokadev/gitbot-test.git"
+    name: "test"
+    branch: "main"
+    remote_name: "origin"
+    script: "python /home/sinokadev/gitbot/scripts/addone.py"
+    commit_message: "자동 생성된 커밋"
