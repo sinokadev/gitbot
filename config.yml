@@ -11,7 +11,7 @@ condition:
     value: 60
   - name: commit_check
     type: commit_message_contains
-    value: "자동 생성된 커밋"
+    value: "auto generated commit"
 
 repos:
   - url: "https://github.com/sinokadev/gitbot-test.git"
@@ -19,5 +19,5 @@ repos:
     branch: "main"
     remote_name: "origin"
     script: "python /home/sinokadev/gitbot/scripts/addone.py"
-    commit_message: "자동 생성된 커밋"
+    commit_message: "auto generated commit"
     run: testone

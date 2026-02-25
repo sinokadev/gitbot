@@ -35,7 +35,6 @@ def commit_condition_passed(repo_obj, conditions_list, latest_commit_message):
         return False
 
     if cond["type"] == "commit_message_contains":
-        # 최신 커밋 메시지에 value 문자열 포함 여부
         return cond["value"] == latest_commit_message
 
     return False
@@ -46,7 +45,7 @@ def interval_condition_passed(repo_obj, conditions_list):
         return False
 
     now = time.time()
-    if now - repo_obj.last_run >= cond["value"]:  # value는 초
+    if now - repo_obj.last_run >= cond["value"]:
         repo_obj.last_run = now
         return True
     return False
@@ -74,7 +73,7 @@ def commit_process(repo: RepoObject, latest_commit_message):
         print(f"No remote branch to pull, skipping: {e}")
 
     print(f"Running script: {repo.script}")
-    repo_path = f"repos/{repo.name}"  # repo 폴더
+    repo_path = f"repos/{repo.name}"
     script_path = repo.script
 
     if os.path.exists(repo_path):
@@ -88,16 +87,15 @@ def commit_process(repo: RepoObject, latest_commit_message):
             text=True
         )
 
-        commit_msg = repo.commit_message  # 기본 메시지
+        commit_msg = repo.commit_message
         for line in result.stdout.splitlines():
             if "GitBotCM:" in line:
                 commit_msg = line.split("GitBotCM:", 1)[1].strip()
-                break  # 첫 번째만 사용
+                break
     else:
         print(f"Repo path {repo_path} does not exist.")
-        return  # repo가 없으면 종료
+        return
 
-    # 변경 사항이 있는지 확인
     if repo.repo.is_dirty(untracked_files=True):
         print("Changes detected, committing...")
         repo.repo.git.add(all=True)
@@ -144,12 +142,10 @@ conditions_list = [vars(c) for c in config.condition]
 while True:
     try:
         for repo in repos:
-            origin = repo.repo.remote(name=repo.remote_name) # 원격 가져오기
-            branch_name = repo.repo.active_branch.name # 현재 브랜치 이름
+            origin = repo.repo.remote(name=repo.remote_name)
+            branch_name = repo.repo.active_branch.name
 
-            # 원격 최신 정보 가져오기 (fetch)
             origin.fetch()
-            # 원격 브랜치 최신 커밋 가져오기
             latest_remote_commit = list(repo.repo.iter_commits(f"origin/{branch_name}", max_count=1))[0]
 
             latest_commit_message = latest_remote_commit.message
