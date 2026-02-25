@@ -1,105 +1,73 @@
 # Git Automation Bot
 
-이 프로젝트는 Git 저장소를 자동으로 관리하고, 조건에 따라 스크립트를 실행하고 커밋 및 푸시를 수행하는 Python 기반 자동화 봇입니다.
+This project is a Python-based automation bot that manages Git repositories, executes scripts based on specified conditions, and performs commits and pushes automatically.  
 
+## Key Features
 
+- Automatic cloning of Git repositories and branch checkout  
+- Script execution based on specified conditions (true/false, commit message content, interval)  
+- Dynamic commit messages based on script results  
+- Automatic commit and push of changes  
+- Management of multiple repositories simultaneously  
 
-## 주요 기능
+## Config (`config.yml`)
 
-- Git 저장소 자동 클론 및 브랜치 체크아웃
-- 지정된 조건(true/false, commit 메시지 포함, 간격)에 따라 스크립트 실행
-- 스크립트 결과에 따라 커밋 메시지 동적 설정
-- 변경 사항 자동 커밋 및 푸시
-- 여러 저장소 동시 관리 가능
-
-
-
-## 설치
-
-### 1. 의존성 설치
-
-```bash
-pip install gitpython pyyaml
-```
-
-### 2. 프로젝트 구조
-
-.
-├── config.yml       # 설정 파일
-├── gitbot.py        # GitBot 실행 스크립트
-└── repos/           # 클론된 저장소 폴더
-
-
-
-## 설정 (`config.yml`)
-
-예시:
+Example:  
 
 ```yaml
 author:
-  name: "Your Name"
-  email: "your.email@example.com"
+  name: "GitBot"
+  email: "gitbot@sinoka.dev"
 
 condition:
-  - name: "run_every_minute"
-    type: "interval"
-    value: 60  # 초 단위
-
-  - name: "commit_message_trigger"
-    type: "commit_message_contains"
-    value: "Update"
-  - name: "bool_trigger"
-    type: "run"
-    value: false
+  - name: testone
+    type: run
+    value: true
+  - name: every_minute
+    type: interval
+    value: 60
+  - name: commit_check
+    type: commit_message_contains
+    value: "auto generated commit"
 
 repos:
-  - name: "example-repo"
-    url: "https://github.com/user/example-repo.git"
+  - url: "https://github.com/sinokadev/gitbot-test.git"
+    name: "test"
     branch: "main"
-    commit_message: "Auto commit by GitBot"
-    script: "run_script.sh"
     remote_name: "origin"
-    run: "run_every_minute"
+    script: "python /home/sinokadev/gitbot/scripts/addone.py"
+    commit_message: "auto generated commit"
+    run: testone
 ```
 
+## Usage
 
+1. Set up your repositories, branches, scripts, and conditions in `config.yml`.  
+2. Run the Python script:  
 
-## 사용법
-
-1. `config.yml`에 저장소, 브랜치, 스크립트, 조건 등을 설정합니다.
-2. Python 스크립트 실행:
-
-```bash
-python gitbot.py
+```
+python src/main.py
 ```
 
-3. 봇이 지정된 조건에 따라 자동으로 스크립트를 실행하고 커밋 및 푸시를 수행합니다.
+3. The bot will automatically execute scripts and perform commits and pushes according to the specified conditions.  
 
+## Condition Types
 
+- `run`: Simple execution toggle (`true` / `false`)  
+- `commit_message_contains`: Checks if the latest commit message contains a specific string  
+- `interval`: Executes at a specified time interval (in seconds)  
 
-## 조건 유형
+## Script Execution
 
-- `run`: 단순 실행 여부 (`true`/`false`)
-- `commit_message_contains`: 최신 커밋 메시지에 특정 문자열 포함 여부
-- `interval`: 지정 시간 간격(초 단위)마다 실행
+- The script specified in the `script` field will be executed.  
+- The first line in the script output that contains `GitBotCM:` will be used as the commit message.  
 
+## Notes
 
+- Repositories are cloned into the `repos/` folder. If they already exist, the existing repository will be opened and updated.  
+- Commits and pushes are performed based on the remote branch specified in `config.yml`.  
+- Any errors will be printed to the console.  
 
-## 스크립트 실행
-
-- `script` 필드에 지정된 스크립트가 실행됩니다.
-- 스크립트 출력에서 `GitBotCM:`이 포함된 첫 번째 줄을 커밋 메시지로 사용합니다.
-
-
-
-## 참고 사항
-
-- `repos/` 폴더에 저장소를 클론하며, 이미 존재하면 기존 저장소를 열고 업데이트합니다.
-- 커밋 및 푸시는 `config.yml`에서 설정한 원격 브랜치를 기준으로 수행됩니다.
-- 오류 발생 시 콘솔에 메시지가 출력됩니다.
-
-
-
-## 라이선스
+## License
 
 MIT License
